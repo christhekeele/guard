@@ -127,6 +127,7 @@ module Guard
       #
       def reset_line
         $stderr.print(color_enabled? ? "\r\e[0m" : "\r\n")
+        $stderr.flush
       end
 
       # Clear the output if clearable.

@@ -76,7 +76,9 @@ module Guard
         # TODO: rename :stopped to continue
         _killed? ? :stopped : :exit
       ensure
-        UI.reset_line
+        # Disable reset, since it seems to mess up output when exiting
+        # UI.reset_line
+
         UI.debug "Interactor was stopped or killed"
         @terminal_settings.restore
       end
@@ -89,6 +91,16 @@ module Guard
         thread = @thread
         fail Interrupt unless thread
         thread.raise Interrupt
+      end
+
+      def destroy
+        @mutex.synchronize do
+          unless @thread.nil?
+            @thread.raise Interrupt
+            @thread.wakeup
+            @thread = nil # set to nil so we know we were killed
+          end
+        end
       end
 
       private
@@ -106,7 +118,12 @@ module Guard
         end
         # check for nill, because it might've been killed between the mutex and
         # now
-        th.join unless th.nil?
+        unless th.nil?
+          begin
+            th.join
+          rescue Interrupt
+          end
+        end
       end
 
       def _killed?
@@ -119,6 +136,12 @@ module Guard
         @mutex.synchronize do
           unless @thread.nil?
             @thread.kill
+            @thread.wakeup
+            begin
+              # @thread.join
+            rescue Interrupt
+            end
+
             @thread = nil # set to nil so we know we were killed
           end
         end

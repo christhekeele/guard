@@ -29,6 +29,9 @@ module Guard
     # @see CLI#start
     #
     def start(options = {})
+      # TODO: workaround to avoid exception
+      @stopped = false
+
       setup(options)
       UI.debug "Guard starts all plugins"
       Runner.new.run(:start)
@@ -52,12 +55,22 @@ module Guard
     end
 
     def stop
+      # prevent reentrant when exception in stop
+      return if @stopped
+      @stopped = true
+
       listener.stop
-      interactor.background
       UI.debug "Guard stops all plugins"
       Runner.new.run(:stop)
       Notifier.disconnect
+
+      # Destroy interactor last, in case notifier does something with
+      # stdout/stderr
+      interactor.destroy
+
       UI.info "Bye bye...", reset: true
+      #UI.logger.flush
+      #UI.logger.close
     end
 
     # Reload Guardfile and all Guard plugins currently enabled.

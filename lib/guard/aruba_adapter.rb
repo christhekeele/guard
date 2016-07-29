@@ -10,15 +10,33 @@ module Guard
       @stderr = stderr
       @kernel = kernel
 
-      if ENV["INSIDE_ARUBA_TEST"] == "1"
-        UI.options = UI.options.merge(flush_seconds: 0)
-      end
+      UI.options =
+        if ENV["INSIDE_ARUBA_TEST"] == "1"
+          # To make sure tests are ok
+          UI.options.merge(flush_seconds: 0)
+        else
+          # As a temporary workaround for possible refresh issues
+          UI.options.merge(flush_seconds: 0)
+        end
     end
 
     def execute!
       exit_code = execute
       # Proxy our exit code back to the injected kernel.
       @kernel.exit(exit_code)
+    end
+
+    def cleanup
+      # flush the logger so the output doesn't appear in next CLI invocation
+      Guard.listener.stop if Guard.listener
+      UI.logger.flush
+      # UI.logger.close
+      UI.reset_logger
+
+      # ...then we put them back.
+      $stderr = STDERR
+      $stdin = STDIN
+      $stdout = STDOUT
     end
 
     def execute
@@ -33,6 +51,7 @@ module Guard
 
       # Thor::Base#start does not have a return value, assume
       # success if no exception is raised.
+      cleanup
       0
     rescue StandardError => e
       # The ruby interpreter would pipe this to STDERR and exit 1 in the case
@@ -40,20 +59,11 @@ module Guard
       b = e.backtrace
       @stderr.puts "#{b.shift}: #{e.message} (#{e.class})"
       @stderr.puts b.map { |s| "\tfrom #{s}" }.join("\n")
+      cleanup
       1
     rescue SystemExit => e
+      cleanup
       e.status
-    ensure
-      # flush the logger so the output doesn't appear in next CLI invocation
-      Guard.listener.stop if Guard.listener
-      UI.logger.flush
-      UI.logger.close
-      UI.reset_logger
-
-      # ...then we put them back.
-      $stderr = STDERR
-      $stdin = STDIN
-      $stdout = STDOUT
     end
   end
 end
