@@ -67,7 +67,14 @@ module Guard
 
       # Assigns a log level
       extend Forwardable
-      def_delegator :logger, :level=
+      # def_delegator :logger, :level=
+      def level=(new_level)
+        if @logger
+          @logger.level = new_level
+        else
+          @options[:level] = new_level
+        end
+      end
 
       # Show an info message.
       #
