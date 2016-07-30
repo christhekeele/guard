@@ -97,7 +97,10 @@ module Guard
         @mutex.synchronize do
           unless @thread.nil?
             @thread.raise Interrupt
-            @thread.wakeup
+            begin
+              @thread.wakeup
+            rescue ThreadError
+            end
             @thread = nil # set to nil so we know we were killed
           end
         end
