@@ -26,7 +26,8 @@ module Guard
         @logger ||= begin
                       require "lumberjack"
                       Lumberjack::Logger.new(
-                        options.fetch(:device) { $stderr },
+                        # ready by symbol to avoid guard/#809
+                        options.fetch('device') { $stderr },
                         options
                       )
                     end
